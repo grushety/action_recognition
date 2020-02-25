@@ -1,0 +1,2 @@
+model_checkpoint_path: "/home/yulia/pepper_ws/src/action_recognition/scripts/learning/models/all_conf_network.ckpt"
+all_model_checkpoint_paths: "/home/yulia/pepper_ws/src/action_recognition/scripts/learning/models/all_conf_network.ckpt"
