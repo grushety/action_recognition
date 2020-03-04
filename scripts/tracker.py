@@ -13,7 +13,7 @@ from sensor_msgs.msg import CompressedImage
 RED_LOW = (0, 0, 150)
 RED_UP = (10, 10, 255)
 # time difference with witch samples would be made (100 mils only 3-4 samples per second)
-MILS = 100
+MILS = 125
 
 global image_source
 image_source = "/iris/camera/image_raw/compressed"

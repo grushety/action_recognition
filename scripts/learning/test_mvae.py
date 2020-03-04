@@ -26,19 +26,35 @@ with tf.Graph().as_default() as g:
                                        vae_mode=False, vae_mode_modalities=False)
     with tf.Session() as sess:
         new_saver = tf.train.Saver()
+        new_saver.restore(sess, PATH + "/models/prediction_network.ckpt")
+        print("Model restored.")
+
+    # Prediction test
+
+    # Reconstruction test
+        print('Prediction model')
+
+        input = list(X_test[5][:3]) + [-2, -2, -2] + list(X_test[5][6:8]) + [-2, -2]
+        print "test_data", X_test[5][6:]
+        x_reconstruct, x_reconstruct_log_sigma_sq = model.reconstruct(sess,  [input])
+        print "reconstructed", x_reconstruct[0][6:]
+
+    with tf.Session() as sess:
+        new_saver = tf.train.Saver()
         new_saver.restore(sess, PATH + "/models/all_conf_network.ckpt")
         print("Model restored.")
 
     # Prediction test
 
     # Reconstruction test
-        print('Test 1')
-        for x in X_test:
-            #print x
-            x_reconstruct, x_reconstruct_log_sigma_sq = model.reconstruct(sess,  [x])
-            print x_reconstruct[0][6:]
-            x_pred, x_pred_sigma = model.reconstruct(sess, x_reconstruct)
-            print x_pred[0][6:]
+        print('Reconstruction Model')
+
+        input = list(X_test[5][:6]) + [-2, -2, -2, -2]
+        print "test_data", X_test[5][6:]
+        x_reconstruct, x_reconstruct_log_sigma_sq = model.reconstruct(sess,  [input])
+        x_predict, x_predict_trololo = model.reconstruct(sess,  x_reconstruct)
+        print "reconstructed", x_reconstruct[0][6:]
+        print "predict", x_predict[0][6:]
 
 
 

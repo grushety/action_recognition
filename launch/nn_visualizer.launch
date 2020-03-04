@@ -1,6 +1,6 @@
 <launch>
     <node pkg="action_recognition" name="tracker" type="tracker.py" args="1" />
-    <node pkg="action_recognition" name="test_controller" type="test_controller.py" args="1"/>
+    <node pkg="action_recognition" name="test_controller" type="test_controller.py" args="30"/>
     <node pkg="action_recognition" name="visualizer" type="nn_visualizer.py"/>
     <node pkg="action_recognition" name="nn_tester" type="nn_tester.py"/>
     <node pkg="action_recognition" name="motor" type="motor.py"/>

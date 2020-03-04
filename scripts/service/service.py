@@ -1,8 +1,10 @@
 #!/usr/bin/env python
 
 from random import randint
+import numpy as np
 from std_msgs.msg import MultiArrayDimension
 from std_msgs.msg import MultiArrayLayout
+from std_msgs.msg import Int32MultiArray
 
 def get_direction(p1, p2):
     x = p2[0] - p1[0]
@@ -78,3 +80,15 @@ def create_layout_2D(length):
     layout.dim[1].stride = 2
     layout.data_offset = 0
     return layout
+
+def prepare_data_to_send(coord, coord_arr):
+    """
+    @return:  Int32MultiArray msg for 2D Array
+    """
+    coord_arr = np.append(coord_arr, coord)
+    # ar = np.asarray(self.reconstructed_trajectory, dtype=np.uint32)
+    one_dim_points = coord_arr.reshape(-1)
+    msg = Int32MultiArray()
+    msg.layout = create_layout_2D(len(coord_arr))
+    msg.data = np.frombuffer(one_dim_points.tobytes(), 'int32')
+    return msg

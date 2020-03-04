@@ -19,7 +19,6 @@ def test_controller():
     commander = rospy.Publisher('/action_recognition/test_status',
                                 String,
                                 queue_size=10)
-
     for i in range(N_TEST):
         test_name = "test_" + str(i + 1)
         prepare_msg = "prepare " + test_name + " " + str(datetime.now())
@@ -38,10 +37,12 @@ def main(args):
     @param args: a duration of one test
     """
     if len(args) > 1:
-        global test_time
-        test_time = int(args[1])
+        if args[1].isdigit():
+            global test_time
+            test_time = int(args[1])
     rospy.init_node('test_controller', anonymous=True)
     try:
+        rospy.loginfo(args)
         test_controller()
     except rospy.ROSInterruptException:
         pass

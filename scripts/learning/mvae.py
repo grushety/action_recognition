@@ -10,7 +10,7 @@ os.environ['TF_CPP_MIN_LOG_LEVEL']='2'
 PATH = "/home/yulia/pepper_ws/src/action_recognition/scripts/learning"
 
 # load data set
-data = scipy.io.loadmat(PATH + "/database/augm_for_prediction_data.mat")
+data = scipy.io.loadmat(PATH + "/database/augm_rec_pred_data.mat")
 X_init = 1 * data["data"]
 print(X_init.shape)
 n_samples = X_init.shape[0]
@@ -165,13 +165,15 @@ class VariationalAutoencoder(object):
             #     for reconstructing the input when the activation in latent
             #     is given.
             # Adding 1e-10 to avoid evaluation of log(0.0)
-            for i in range(len(self.layers['final_means'])):
-                reconstr_loss = (0.5 * tf.reduce_sum(
+            for i in range(len(self.layers['final_means'])): #10
+                #reduce sum added all digit in column
+                reconstr_loss = (0.5 * tf.reduce_sum( #quadrat of dif btw orig and gen data
                     tf.square(self.x_noiseless_sliced[i] - self.layers['final_means'][i]) / tf.exp(
-                        self.layers['final_sigmas'][i]), 1)
-                                 + 0.5 * tf.reduce_sum(self.layers['final_sigmas'][i], 1)
+                        self.layers['final_sigmas'][i]), 1)   # e^x could be only positive
+                                 + 0.5 * abs(tf.reduce_sum(self.layers['final_sigmas'][i], 1)) # only thing can be negative
                                  + 0.5 * self.n_z / 2 * np.log(2 * math.pi)) / self.network_architecture['size_slices'][
                                     i]
+                print(tf.reduce_sum(self.layers['final_sigmas'][i], 1) * 0.5)
                 self.tmp_costs.append(reconstr_loss)
             self.reconstr_loss = tf.reduce_mean(
                 self.tmp_costs[0] + self.tmp_costs[1])
@@ -229,7 +231,8 @@ class VariationalAutoencoder(object):
             for l in self.layers[layer]:
                 print(l)
 
-################################################################################################
+#########################################################################################################
+
 def train(sess, vae, input_data, learning_rate=0.0001, batch_size=100, training_epochs=10, display_step=1,
                 vae_mode=True, vae_mode_modalities=True):
     # Write logs to Tensorboard
@@ -265,21 +268,26 @@ def train(sess, vae, input_data, learning_rate=0.0001, batch_size=100, training_
             print("Epoch: %04d / %04d, Cost= %04f, Recon= %04f, Latent= %04f, alpha= %04f" % \
                   (epoch, training_epochs, avg_cost, avg_recon, avg_latent, alpha))
 
-        # if epoch % display_step*5 == 0:
-        # save_path = vae.saver.save(vae.sess, "./models/mvae4j4v_tmp_whole_complete.ckpt")
-    save_path = vae.saver.save(vae.sess, PATH + "/models/prediction_network.ckpt")
+    save_path = vae.saver.save(vae.sess, PATH + "/models/test_network.ckpt")
 
 
 def shuffle_data(x):
+    """
+    @param x: Input set of samples
+    @return: Set of samples in random order
+    """
     y = list(x)
     np.random.shuffle(y)
     return np.asarray(y)
 
 
 def network_param():
+    """
+    @return: Architecture for 2 modalities MVAE
+    """
     network_architecture = {
          'n_input': 10,
-         'n_z': 10,
+         'n_z': 10, # output size
          'size_slices': [6, 4],
          'size_slices_shared': [15, 10],
          'mod0': [30, 15],
@@ -292,10 +300,12 @@ def network_param():
 
 
 def xavier_init(fan_in, fan_out, constant=1):
-    # Xavier/Glorot initialization of network weights depends the number of
-    # incoming connections (fan_in),
-    # outgoing connections (fan_out),
-    # and kind of activation function (sigmoid or tanh) of the neuron.
+    """
+    Xavier/Glorot initialization of network weights depends the number of
+    incoming connections (fan_in),
+    outgoing connections (fan_out),
+    and kind of activation function (sigmoid or tanh) of the neuron.
+    """
     low = -constant * np.sqrt(1.0 / (fan_in + fan_out))
     high = constant * np.sqrt(1.0 / (fan_in + fan_out))
     return tf.random_uniform((fan_in, fan_out), minval=low, maxval=high, dtype=tf.float64)
@@ -324,4 +334,4 @@ if __name__ == '__main__':
     vae = VariationalAutoencoder(sess, network_param(), learning_rate=learning_rate, batch_size=batch_size,
                                  vae_mode=vae_mode, vae_mode_modalities=vae_mode_modalities)
     vae.print_layers_size()
-    train(sess, vae, X_init, training_epochs=50000, batch_size=batch_size)
+    train(sess, vae, X_init, training_epochs=1000, batch_size=batch_size)
