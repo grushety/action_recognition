@@ -173,7 +173,6 @@ class VariationalAutoencoder(object):
                                  + 0.5 * abs(tf.reduce_sum(self.layers['final_sigmas'][i], 1)) # only thing can be negative
                                  + 0.5 * self.n_z / 2 * np.log(2 * math.pi)) / self.network_architecture['size_slices'][
                                     i]
-                print(tf.reduce_sum(self.layers['final_sigmas'][i], 1) * 0.5)
                 self.tmp_costs.append(reconstr_loss)
             self.reconstr_loss = tf.reduce_mean(
                 self.tmp_costs[0] + self.tmp_costs[1])
