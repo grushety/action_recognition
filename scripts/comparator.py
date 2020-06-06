@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 import sys
 import ast
+import random
 import numpy as np
 from scipy import spatial
 from datetime import datetime, timedelta
@@ -11,6 +12,39 @@ import rospy
 from std_msgs.msg import String
 from std_msgs.msg import Int32MultiArray
 
+def resize(a, x):
+    if x != 0:
+        for i in range(x):
+            index = random.randint(1, a.size/2 - 2)
+            a = np.insert(a, index, a[index], axis=0)
+    return a
+
+
+def adjust(a, b):
+    print("before", a.shape, b.shape)
+    if a.shape[0] < b.shape[1]:
+        a = resize(a, b.shape[1] - a.shape[0])
+        return norm(a), norm_matrix(b)
+    else:
+        c = np.zeros(3, a.shape[0], a.shape[1])
+        for i in range (b.shape[0]):
+            c[i] = resize(b[i], a.shape[1]-b.shape[0])
+        return norm(a), norm(c)
+
+def norm(a):
+    mean_x = int(np.mean(a[:,0]))
+    mean_y = int(np.mean(a[:,1]))
+    a[...,0] -= mean_x
+    a[...,1] -= mean_y
+    return a
+
+def norm_matrix(b):
+    for i in range(b.shape[0]):
+        b[i]=norm(b[i])
+    return b
+
+def distance(v1, v2):
+    return np.sqrt(np.sum((v1 - v2) ** 2))
 
 class Comparator(object):
     """
@@ -103,15 +137,15 @@ class Comparator(object):
 
     def find_min_ed(self):
         index = 3
-        results = np.array([])
+        results, hausdorffs = np.zeros(3), np.zeros(3)
         if not self.reconstr_data.size == 0:
-            tree = spatial.cKDTree(self.reconstr_data)
-            for data in self.monitor_data:
-                mindist, minid = tree.query(data)
-                sum = np.mean(mindist)
-                results = np.concatenate((results, [sum]))
-            index = np.argmin(results)
-        return index == 0, results
+            a, b = adjust(self.reconstr_data, self.monitor_data)
+            for i in range(b.shape[0]):
+                results[i] = distance(a, b[i])
+                hausdorffs[i] = directed_hausdorff(a, b[i])
+            index_1 = np.argmin(results)
+            index_2 = np.argmin(hausdorffs)
+        return index_1 == 0, results, index_2 == 0, hausdorffs
 
     def find_hausdorff(self):
         index = 3
@@ -131,17 +165,18 @@ class Comparator(object):
         x, y, z = False, False, False
         while not x or not y or not z:
             if (datetime.now() - dt) >= timedelta(seconds=2) and not x:
-                self.test['accuracy_1'], self.test['ed_1'] = self.find_min_ed()
-                print(self.find_hausdorff())
+                self.test['accuracy_1'], self.test['ed_1'], self.test['accuracyH_1'], self.test['h_1'] = self.find_min_ed()
+                #print(self.find_hausdorff())
                 x = True
             if (datetime.now() - dt) >= timedelta(seconds=3) and not y:
-                self.test['accuracy_2'], self.test['ed_2'] = self.find_min_ed()
+                self.test['accuracy_2'], self.test['ed_2'], self.test['accuracyH_2'], self.test['h_2'] = self.find_min_ed()
                 y = True
             if (datetime.now() - dt) >= timedelta(seconds=5) and not z:
-                self.test['accuracy_3'], self.test['ed_3'] = self.find_min_ed()
+                self.test['accuracy_3'], self.test['ed_3'], self.test['accuracyH_3'], self.test['h_3'] = self.find_min_ed()
                 z = True
                 #print ("Rec", self.reconstr_data)
                 #print ("Real", self.monitor_data[0])
+
 
 
 def main(args):

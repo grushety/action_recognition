@@ -3,6 +3,7 @@
 import tensorflow as tf
 import sys
 import os
+import random
 from datetime import datetime, timedelta
 import numpy as np
 
@@ -19,11 +20,12 @@ from std_msgs.msg import Int32MultiArray
 RED_LOW = (0, 0, 150)
 RED_UP = (10, 10, 255)
 
-MILS = 10
+MILS = 90
 missing_mod = [-2, -2, -2, -2]
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 rp = rospkg.RosPack()
 PATH = os.path.join(rp.get_path("action_recognition"), "scripts", "learning")
+
 
 
 class Reconstructor(object):
@@ -61,6 +63,11 @@ class Reconstructor(object):
         """
         sample = self.group.get_current_joint_values()
         return [sample[0], sample[1], sample[3]]
+
+
+
+
+
 
     def run(self):
         """
