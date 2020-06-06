@@ -20,10 +20,10 @@ class Comparator(object):
 
     def __init__(self):
         self.sub_rec = rospy.Subscriber('/action_recognition/pos_reconstruction',
-                                        Int32MultiArray, self.receive_reconstruction_data,
+                                        Int32MultiArray, self.receive_data,
                                         queue_size=1)
         self.sub_pred = rospy.Subscriber('/action_recognition/pos_prediction',
-                                         String, self.receive_prediction, queue_size=1)
+                                         Int32MultiArray, self.receive_data, queue_size=1)
         self.sub_monitor = rospy.Subscriber('/action_recognition/monitor/data',
                                             Int32MultiArray, self.receive_monitor_data,
                                             queue_size=1)
@@ -38,6 +38,7 @@ class Comparator(object):
         self.last_directions = []
         self.results = []
         self.colors = []
+        self.tests = []
         self.test = {
             "name": " ",
             "start_time": " ",
@@ -77,10 +78,11 @@ class Comparator(object):
             self.timer(date_time_obj)
         if self.status == "end":
             rospy.loginfo(self.test)
-            print "Monitor counter: ", self.monitor_counter
-            print "Reconstr counter: ", self.rec_counter
-            print "Predict counter: " , self.pred_counter
+            print ("Monitor counter: ", self.monitor_counter)
+            print ("Reconstr counter: ", self.rec_counter)
+            print ("Predict counter: ", self.pred_counter)
             self.results.append(self.test)
+            self.tests.append(self.test)
             self.test = {}
             self.pred["counter"] = 0
             self.rec_counter = 0
@@ -99,20 +101,20 @@ class Comparator(object):
         l = data.layout.dim[1].size
         input_monitor = np.asarray(data.data)
         self.monitor_data = input_monitor.reshape(3, l, 2)
-        self.monitor_counter+= 1
+        self.monitor_counter += 1
         i = 0
         self.right_dir.append(get_direction(self.monitor_data[0][-2], self.monitor_data[0][-1]))
         print self.right_dir
         for line in self.monitor_data:
             direction = get_direction(line[-2], line[1])
-            #print direction, self.pred['dir']
+            # print direction, self.pred['dir']
             if self.pred['flag']:
                 self.pred['flag'] = False
                 if self.pred['dir'] == direction:
                     self.dir_sim[i] += 1
-                    i +=1
+                    i += 1
 
-    def receive_reconstruction_data(self, data):
+    def receive_data(self, data):
         """
         Callback
         @param data: 2D-array of points
@@ -122,15 +124,6 @@ class Comparator(object):
         self.reconstr_data = input_reconstructor.reshape(l, 2)
         self.rec_counter += 1
 
-    def receive_prediction(self, data):
-        """
-        Callback
-        @param data: Str , predicted direction
-        """
-        self.pred_counter += 1
-        self.pred['dir'] = data.data
-        self.pred['flag'] = True
-        self.pred['counter'] += 1
 
     def find_min_ed(self):
         a = {}
@@ -191,6 +184,7 @@ def main(args):
     try:
         rospy.spin()
     except KeyboardInterrupt:
+        print (Comparator.tests)
         print ("Shutting down ROS comparator module")
 
 

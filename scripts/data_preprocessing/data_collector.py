@@ -30,7 +30,7 @@ class DataCollector:
         self.scene = moveit_commander.PlanningSceneInterface()
         self.group = moveit_commander.MoveGroupCommander("left_arm")
         self.coordinate = (0, 0)
-        self.number_of_samples = 1000
+        self.number_of_samples = 300
         rp = rospkg.RosPack()
         self.path = os.path.join(rp.get_path("action_recognition"), "scripts", "learning", "database")
 
@@ -81,7 +81,7 @@ class DataCollector:
             old_joints = cur_joints
         samples = np.asarray(samples, dtype=np.float32)
         samples = np.reshape(samples, (-1, 10))
-        sio.savemat(self.path + '/reconstruct_data.mat', {'data': samples})
+        sio.savemat(self.path + '/new_test_data_raw.mat', {'data': samples})
 
 
 def main(args):

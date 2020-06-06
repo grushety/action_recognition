@@ -110,7 +110,7 @@ def main(args):
     """
     ic = Monitor()
     rospy.init_node('monitor', anonymous=True)
-    mode = 0
+    mode = 1
     if len(args) > 1:
         mode = args[1]
     try:
