@@ -104,16 +104,12 @@ class Reconstructor(object):
                 network_architecture = network_param()
                 learning_rate = 0.00001
                 batch_size = 1
-                with tf.name_scope("model"):
-                    model = VariationalAutoencoder(sess, network_architecture, batch_size=batch_size,
-                                                    learning_rate=learning_rate,
-                                                    vae_mode=False, vae_mode_modalities=False)
 
+                model = VariationalAutoencoder(sess, network_architecture, batch_size=batch_size,
+                                               learning_rate=learning_rate,
+                                               vae_mode=False, vae_mode_modalities=False)
             with tf.Session() as sess:
-                model_var = {v.name.lstrip("model/"): v
-                                  for v in tf.get_collection(tf.GraphKeys.VARIABLES, scope="model1/")}
-
-                new_saver = tf.train.Saver(var_list=model_var)
+                new_saver = tf.train.Saver()
                 new_saver.restore(sess, PATH + "/models/prediction_network.ckpt")
                 # new_saver.restore(sess, PATH + "/models/mixed_network.ckpt")
                 print("Models restored")

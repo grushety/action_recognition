@@ -5,7 +5,7 @@ import numpy as np
 from scipy import spatial
 from datetime import datetime, timedelta
 
-from service.service import get_direction
+from scipy.spatial.distance import directed_hausdorff
 
 import rospy
 from std_msgs.msg import String
@@ -40,18 +40,9 @@ class Comparator(object):
         self.colors = []
         self.tests = []
         self.test = {
-            "name": " ",
-            "start_time": " ",
-            "eval_2": " ",
-            "pred_eval_2": {
-                "is_right": "",
-                "similarity_index": "",
-                "pred_count": ""
-            },
-            "eval_3": " ",
-            "pred_eval_3": {},
-            "eval_5": " ",
-            "pred_eval_5": {},
+            "name": " ", "start_time": " ",
+            "accuracy_1": " ","accuracy_2": " ", "accuracy_3": " ",
+            "ed_1": " ", "ed_2": " ", "ed_3": " ",
         }
 
         self.pred = {'counter': 0, 'dir': '', 'flag': True}
@@ -60,6 +51,10 @@ class Comparator(object):
         self.pred_counter = 0
         self.dir_sim = [0, 0, 0]
         self.right_dir = []
+        self.test_counter = 0
+
+    def get_test_counter(self):
+        return self.test_counter
 
     def synchronize(self, msg):
         """
@@ -78,11 +73,11 @@ class Comparator(object):
             self.timer(date_time_obj)
         if self.status == "end":
             rospy.loginfo(self.test)
-            print ("Monitor counter: ", self.monitor_counter)
-            print ("Reconstr counter: ", self.rec_counter)
-            print ("Predict counter: ", self.pred_counter)
+            #print ("Monitor counter: ", self.monitor_counter)
+            #print ("Reconstr counter: ", self.rec_counter)
             self.results.append(self.test)
             self.tests.append(self.test)
+            self.test_counter += 1
             self.test = {}
             self.pred["counter"] = 0
             self.rec_counter = 0
@@ -102,17 +97,6 @@ class Comparator(object):
         input_monitor = np.asarray(data.data)
         self.monitor_data = input_monitor.reshape(3, l, 2)
         self.monitor_counter += 1
-        i = 0
-        self.right_dir.append(get_direction(self.monitor_data[0][-2], self.monitor_data[0][-1]))
-        print self.right_dir
-        for line in self.monitor_data:
-            direction = get_direction(line[-2], line[1])
-            # print direction, self.pred['dir']
-            if self.pred['flag']:
-                self.pred['flag'] = False
-                if self.pred['dir'] == direction:
-                    self.dir_sim[i] += 1
-                    i += 1
 
     def receive_data(self, data):
         """
@@ -126,33 +110,26 @@ class Comparator(object):
 
 
     def find_min_ed(self):
-        a = {}
+        index = 3
         results = np.array([])
         if not self.reconstr_data.size == 0:
             tree = spatial.cKDTree(self.reconstr_data)
             for data in self.monitor_data:
                 mindist, minid = tree.query(data)
-                sum = np.sum(mindist)
+                sum = np.mean(mindist)
                 results = np.concatenate((results, [sum]))
             index = np.argmin(results)
-            a['is_right'] = index == 0
-            a['dist'] = results
-        return a
+        return index == 0, results
 
-    def get_pred_stats(self):
-        """
-        Gather statistics for predictions by evaluation
-        @return:
-        """
-        a = {}
-        index = np.argmax(self.dir_sim)
-        if np.amax(self.dir_sim) != 0 or index == 0:
-            a['is_right'] = True
-        else:
-            a['is_right'] = False
-        a['sim_index'] = self.dir_sim
-        a['pred_count'] = self.pred['counter']
-        return a
+    def find_hausdorff(self):
+        index = 3
+        results = np.array([])
+        if not self.reconstr_data.size == 0:
+            for data in self.monitor_data:
+                hausdorff = directed_hausdorff(self.reconstr_data, data)
+                results = np.concatenate((results, [hausdorff]))
+            index = np.argmin(results)
+        return index == 0, results
 
     def timer(self, dt):
         """
@@ -162,17 +139,17 @@ class Comparator(object):
         x, y, z = False, False, False
         while not x or not y or not z:
             if (datetime.now() - dt) >= timedelta(seconds=2) and not x:
-                self.test['eval_2'] = self.find_min_ed()
-                self.test['pred_eval_2'] = self.get_pred_stats()
+                self.test['accuracy_1'], self.test['ed_1'] = self.find_min_ed()
+                #print(self.find_hausdorff())
                 x = True
             if (datetime.now() - dt) >= timedelta(seconds=3) and not y:
-                self.test['eval_3'] = self.find_min_ed()
-                self.test['pred_eval_3'] = self.get_pred_stats()
+                self.test['accuracy_2'], self.test['ed_2'] = self.find_min_ed()
                 y = True
             if (datetime.now() - dt) >= timedelta(seconds=5) and not z:
-                self.test['eval_5'] = self.find_min_ed()
-                self.test['pred_eval_5'] = self.get_pred_stats()
+                self.test['accuracy_3'], self.test['ed_3'] = self.find_min_ed()
                 z = True
+                print ("Rec", self.reconstr_data)
+                print ("Real", self.monitor_data[0])
 
 
 def main(args):
@@ -182,9 +159,10 @@ def main(args):
     if args != "":
         Comparator.mode = args
     try:
-        rospy.spin()
+        while ic.test_counter < 3:
+            rospy.spin()
+        print ("Test", ic.tests)
     except KeyboardInterrupt:
-        print (Comparator.tests)
         print ("Shutting down ROS comparator module")
 
 

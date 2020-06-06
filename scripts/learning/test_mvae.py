@@ -26,7 +26,7 @@ with tf.Graph().as_default() as g:
                                        vae_mode=False, vae_mode_modalities=False)
     with tf.Session() as sess:
         new_saver = tf.train.Saver()
-        new_saver.restore(sess, PATH + "/models/prediction_network.ckpt")
+        new_saver.restore(sess, PATH + "/models/all_conf_network.ckpt")
         print("Model restored.")
 
     # Prediction test

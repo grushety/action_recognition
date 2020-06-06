@@ -19,7 +19,7 @@ from std_msgs.msg import Int32MultiArray
 RED_LOW = (0, 0, 150)
 RED_UP = (10, 10, 255)
 
-MILS = 10
+MILS = 90
 missing_mod = [-2, -2, -2, -2]
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 rp = rospkg.RosPack()
@@ -75,23 +75,21 @@ class Reconstructor(object):
                 network_architecture = network_param()
                 learning_rate = 0.00001
                 batch_size = 1
-                with tf.name_scope("model"):
-                    model = VariationalAutoencoder(sess, network_architecture, batch_size=batch_size,
-                                                   learning_rate=learning_rate,
-                                                   vae_mode=False, vae_mode_modalities=True)
 
+                model = VariationalAutoencoder(sess, network_architecture, batch_size=batch_size,
+                                               learning_rate=learning_rate,
+                                               vae_mode=False, vae_mode_modalities=False)
             with tf.Session() as sess:
                 new_saver = tf.train.Saver()
-                #new_saver.restore(sess, PATH + "/models/all_conf_network.ckpt")
-                new_saver.restore(sess, PATH + "/models/mixed_network.ckpt")
-                print("Model restored")
+                new_saver.restore(sess, PATH + "/models/all_conf_network.ckpt")
+                print("Model restored.")
 
                 old_time = datetime.now()
                 old_joint = self.get_sample()
                 while True:
                     if datetime.now() > old_time + timedelta(milliseconds=MILS) and self.status == "start":
                         joint = self.get_sample()
-
+                        print("I am here")
                         # prepare the input data for MVAE reconstruction
                         rec_input = [old_joint + joint + missing_mod]
 
@@ -106,6 +104,7 @@ class Reconstructor(object):
 
                         # prepare reconstructed_trajectory array and publish it
                         msg_rec = prepare_data_to_send(rec_coord, self.reconstructed_trajectory)
+                        print ("Send format ", msg_rec)
                         self.pub_rec.publish(msg_rec)
 
 
