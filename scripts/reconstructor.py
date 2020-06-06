@@ -19,7 +19,7 @@ from std_msgs.msg import Int32MultiArray
 RED_LOW = (0, 0, 150)
 RED_UP = (10, 10, 255)
 
-MILS = 90
+MILS = 10
 missing_mod = [-2, -2, -2, -2]
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 rp = rospkg.RosPack()
@@ -38,13 +38,11 @@ class Reconstructor(object):
         self.robot = moveit_commander.RobotCommander()
         self.scene = moveit_commander.PlanningSceneInterface()
         self.group = moveit_commander.MoveGroupCommander("left_arm")
-        self.pub_rec = rospy.Publisher('/action_recognition/pos_reconstruction', Int32MultiArray, queue_size=10)
+        self.pub_rec = rospy.Publisher('/action_recognition/pos_reconstruction', String, queue_size=10)
         self.status_subscriber = rospy.Subscriber("/action_recognition/test_status",
                                                   String, self.synchronize, queue_size=20)
         self.status = ""
-        self.reconstructed_trajectory = np.array([])
-        self.predicted_trajectory = np.array([])
-        self.tracker_coords = []
+        self.coords = []
 
     def synchronize(self, msg):
         """
@@ -55,7 +53,7 @@ class Reconstructor(object):
         msg = msg.data.split(' ')
         self.status = msg[0]
         if self.status == "end":
-            self.reconstructed_trajectory = []
+            self.coords = []
 
     def get_sample(self):
         """
@@ -89,23 +87,22 @@ class Reconstructor(object):
                 while True:
                     if datetime.now() > old_time + timedelta(milliseconds=MILS) and self.status == "start":
                         joint = self.get_sample()
-                        print("I am here")
+
                         # prepare the input data for MVAE reconstruction
                         rec_input = [old_joint + joint + missing_mod]
 
                         # pass the data through nn and denormalize output coordinates
                         reconstruct, _ = model.reconstruct(sess, rec_input)
 
-                        rec_coord = denormalize_coord(reconstruct[0][8:])
-
+                        rec_coord = denormalize_coord(reconstruct[0][8:]).tolist()
                         # handle time issue for next loop
                         old_joint = joint
                         old_time = datetime.now()
-
+                        self.coords.append(rec_coord)
                         # prepare reconstructed_trajectory array and publish it
-                        msg_rec = prepare_data_to_send(rec_coord, self.reconstructed_trajectory)
-                        print ("Send format ", msg_rec)
-                        self.pub_rec.publish(msg_rec)
+                        #msg_rec = prepare_data_to_send(rec_coord, self.reconstructed_trajectory)
+
+                        self.pub_rec.publish(str(self.coords))
 
 
 def main(args):

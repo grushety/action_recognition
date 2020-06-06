@@ -20,41 +20,28 @@ class Comparator(object):
 
     def __init__(self):
         self.sub_rec = rospy.Subscriber('/action_recognition/pos_reconstruction',
-                                        Int32MultiArray, self.receive_data,
+                                        String, self.receive_rec_data,
                                         queue_size=1)
         self.sub_pred = rospy.Subscriber('/action_recognition/pos_prediction',
                                          Int32MultiArray, self.receive_data, queue_size=1)
         self.sub_monitor = rospy.Subscriber('/action_recognition/monitor/data',
                                             Int32MultiArray, self.receive_monitor_data,
                                             queue_size=1)
-        self.pub = rospy.Publisher('/action_recognition/results', String, queue_size=10)
+        #self.pub = rospy.Publisher('/action_recognition/results', String, queue_size=10)
         self.status_subscriber = rospy.Subscriber("/action_recognition/test_status",
                                                   String, self.synchronize, queue_size=20)
         self.monitor_data = []
-        self.pred_direction = "Zero"
         self.reconstr_data = np.array([])
         self.mode = 0
         self.status = ""
-        self.last_directions = []
-        self.results = []
-        self.colors = []
         self.tests = []
         self.test = {
             "name": " ", "start_time": " ",
             "accuracy_1": " ","accuracy_2": " ", "accuracy_3": " ",
             "ed_1": " ", "ed_2": " ", "ed_3": " ",
         }
-
-        self.pred = {'counter': 0, 'dir': '', 'flag': True}
-        self.rec_counter = 0
-        self.monitor_counter = 0
-        self.pred_counter = 0
-        self.dir_sim = [0, 0, 0]
-        self.right_dir = []
-        self.test_counter = 0
-
-    def get_test_counter(self):
-        return self.test_counter
+        self.rec_counter, self.monitor_counter, self.test_counter= 0, 0, 0
+        #results = [0,0,0]
 
     def synchronize(self, msg):
         """
@@ -72,19 +59,14 @@ class Comparator(object):
             self.test['start_time'] = date_time_obj.strftime("%H:%M:%S")
             self.timer(date_time_obj)
         if self.status == "end":
-            rospy.loginfo(self.test)
-            #print ("Monitor counter: ", self.monitor_counter)
-            #print ("Reconstr counter: ", self.rec_counter)
-            self.results.append(self.test)
+            print ("Monitor counter: ", self.monitor_counter)
+            print ("Reconstr counter: ", self.rec_counter)
+            #self.results.append(self.test)
             self.tests.append(self.test)
             self.test_counter += 1
             self.test = {}
-            self.pred["counter"] = 0
             self.rec_counter = 0
             self.monitor_counter = 0
-            self.pred_counter = 0
-            self.dir_sim = [0, 0, 0]
-            self.right_dir = []
 
     def receive_monitor_data(self, data):
         """
@@ -98,15 +80,25 @@ class Comparator(object):
         self.monitor_data = input_monitor.reshape(3, l, 2)
         self.monitor_counter += 1
 
+    def receive_rec_data(self, data):
+        """
+        Callback
+        @param data: 2D-array of points
+        """
+        points = ast.literal_eval(data.data)
+        self.reconstr_data = np.asarray(points, dtype=int)
+        self.rec_counter += 1
+
     def receive_data(self, data):
         """
         Callback
         @param data: 2D-array of points
         """
-        l = data.layout.dim[0].size
-        input_reconstructor = np.asarray(data.data)
-        self.reconstr_data = input_reconstructor.reshape(l, 2)
-        self.rec_counter += 1
+        pass
+        #l = data.layout.dim[0].size
+        #input_reconstructor = np.asarray(data.data)
+        #self.reconstr_data = input_reconstructor.reshape(l, 2)
+        #self.rec_counter += 1
 
 
     def find_min_ed(self):
@@ -140,7 +132,7 @@ class Comparator(object):
         while not x or not y or not z:
             if (datetime.now() - dt) >= timedelta(seconds=2) and not x:
                 self.test['accuracy_1'], self.test['ed_1'] = self.find_min_ed()
-                #print(self.find_hausdorff())
+                print(self.find_hausdorff())
                 x = True
             if (datetime.now() - dt) >= timedelta(seconds=3) and not y:
                 self.test['accuracy_2'], self.test['ed_2'] = self.find_min_ed()
@@ -148,8 +140,8 @@ class Comparator(object):
             if (datetime.now() - dt) >= timedelta(seconds=5) and not z:
                 self.test['accuracy_3'], self.test['ed_3'] = self.find_min_ed()
                 z = True
-                print ("Rec", self.reconstr_data)
-                print ("Real", self.monitor_data[0])
+                #print ("Rec", self.reconstr_data)
+                #print ("Real", self.monitor_data[0])
 
 
 def main(args):

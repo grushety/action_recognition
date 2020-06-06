@@ -88,6 +88,7 @@ def prepare_data_to_send(coord, coord_arr):
     coord_arr = np.append(coord_arr, coord)
     # ar = np.asarray(self.reconstructed_trajectory, dtype=np.uint32)
     one_dim_points = coord_arr.reshape(-1)
+    print(one_dim_points)
     msg = Int32MultiArray()
     msg.layout = create_layout_2D(len(coord_arr))
     msg.data = np.frombuffer(one_dim_points.tobytes(), 'int32')
