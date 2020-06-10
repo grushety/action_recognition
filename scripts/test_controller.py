@@ -23,13 +23,13 @@ def test_controller():
         test_name = "test_" + str(i + 1)
         prepare_msg = "prepare " + test_name + " " + str(datetime.now())
         commander.publish(prepare_msg)
-        sleep(2)
+        sleep(3)
         start_msg = "start " + test_name + " " + str(datetime.now())
         commander.publish(start_msg)
         sleep(test_time)
         end_msg = "end " + test_name + " " + str(datetime.now())
         commander.publish(end_msg)
-        sleep(3)
+        sleep(10)
 
 
 def main(args):

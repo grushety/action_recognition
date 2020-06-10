@@ -23,6 +23,9 @@ from sensor_msgs.msg import CompressedImage
 RED_LOW = (0, 0, 150)
 RED_UP = (10, 10, 255)
 
+PRED_STEPS = 5
+
+
 MILS = 10
 missing_mod = [-2, -2, -2, -2]
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
@@ -41,15 +44,15 @@ class Reconstructor(object):
         self.robot = moveit_commander.RobotCommander()
         self.scene = moveit_commander.PlanningSceneInterface()
         self.group = moveit_commander.MoveGroupCommander("left_arm")
-        self.pub_pred = rospy.Publisher('/action_recognition/pos_prediction', Int32MultiArray, queue_size=10)
+        self.pub_pred = rospy.Publisher('/action_recognition/pos_prediction', String, queue_size=10)
         self.status_subscriber = rospy.Subscriber("/action_recognition/test_status",
                                                   String, self.synchronize, queue_size=20)
         self.tracker_data = rospy.Subscriber("/pepper_robot/camera/bottom/image_raw/compressed",
                                              CompressedImage, self.get_position, queue_size=20)
         self.status = ""
-        self.reconstructed_trajectory = np.array([])
-        self.predicted_trajectory = np.array([])
-        self.tracker_coords = []
+        self.coords = []
+        self.camera_coords = []
+        self.counter = PRED_STEPS
 
     def synchronize(self, msg):
         """
@@ -120,25 +123,27 @@ class Reconstructor(object):
                     if datetime.now() > old_time + timedelta(milliseconds=MILS) and self.status == "start":
                         joint = self.get_sample()
                         pos = self.tracker_coords
-
+                        print("pos", pos)
                         # prepare the input data for MVAE prediction
                         # First option : using reconstructed visual input for t-1
-                        pred_input = [joint + [-2, -2, -2] + pos + [-2, -2]]
-
-                        # Second option : using the tracked coordinates from Robot's point of view (head bottom camera)
-                        # pred_input = [joint + [-2, -2, -2] + self.tracker_coords + [-2, -2]]
-
+                        if self.counter >= PRED_STEPS:
+                            pred_input = [joint + [-2, -2, -2] + pos + [-2, -2]]
+                            self.counter=0
+                        else:
+                            pred_input = [joint + [-2, -2, -2] + old_pos + [-2, -2]]
+                            self.counter+=1
                         predict, _ = model.reconstruct(sess, pred_input)
-                        pred_coord = denormalize_coord(predict[0][8:])
-
-
+                        old_pos = predict[0][8:]
+                        print("old_pos", old_pos)
+                        pred_coord = denormalize_coord(old_pos)
 
                         # handle time issue for next loop
                         old_joint = joint
                         old_time = datetime.now()
+
                         # publish predicted direction to Comparator node
-                        msg_pred = prepare_data_to_send(pred_coord, self.predicted_trajectory)
-                        self.pub_pred.publish(msg_pred)
+                        self.coords.append(pred_coord)
+                        self.pub_pred.publish(str(self.coords))
 
 
 

@@ -64,7 +64,7 @@ class Comparator(object):
         #self.pub = rospy.Publisher('/action_recognition/results', String, queue_size=10)
         self.status_subscriber = rospy.Subscriber("/action_recognition/test_status",
                                                   String, self.synchronize, queue_size=20)
-        self.monitor_data = []
+        self.monitor_data = np.array([])
         self.reconstr_data = np.array([])
         self.mode = 0
         self.status = ""
@@ -93,9 +93,6 @@ class Comparator(object):
             self.test['start_time'] = date_time_obj.strftime("%H:%M:%S")
             self.timer(date_time_obj)
         if self.status == "end":
-            print ("Monitor counter: ", self.monitor_counter)
-            print ("Reconstr counter: ", self.rec_counter)
-            #self.results.append(self.test)
             self.tests.append(self.test)
             self.test_counter += 1
             self.test = {}
@@ -137,25 +134,20 @@ class Comparator(object):
 
     def find_min_ed(self):
         index = 3
-        results, hausdorffs = np.zeros(3), np.zeros(3)
+        results, hausdorffs, cdist = np.zeros(3), np.zeros(3), np.zeros(3)
         if not self.reconstr_data.size == 0:
             a, b = adjust(self.reconstr_data, self.monitor_data)
             for i in range(b.shape[0]):
                 results[i] = distance(a, b[i])
-                hausdorffs[i] = directed_hausdorff(a, b[i])
+                cdist[i] = np.trace(spatial.distance.cdist(a, b[i]))
+                hausdorffs[i] = directed_hausdorff(a, b[i])[0]
+                print "results:", cdist
+                print "mean:", np.min(cdist)
             index_1 = np.argmin(results)
             index_2 = np.argmin(hausdorffs)
-        return index_1 == 0, results, index_2 == 0, hausdorffs
+            index_3 = np.argmin(cdist)
+        return index_1 == 0, results, index_2 == 0, hausdorffs, index_3==0, cdist
 
-    def find_hausdorff(self):
-        index = 3
-        results = np.array([])
-        if not self.reconstr_data.size == 0:
-            for data in self.monitor_data:
-                hausdorff = directed_hausdorff(self.reconstr_data, data)
-                results = np.concatenate((results, [hausdorff]))
-            index = np.argmin(results)
-        return index == 0, results
 
     def timer(self, dt):
         """
@@ -165,14 +157,14 @@ class Comparator(object):
         x, y, z = False, False, False
         while not x or not y or not z:
             if (datetime.now() - dt) >= timedelta(seconds=2) and not x:
-                self.test['accuracy_1'], self.test['ed_1'], self.test['accuracyH_1'], self.test['h_1'] = self.find_min_ed()
+                self.test['acc_1'], self.test['ed_1'], self.test['acc_1'], self.test['h_1'], self.test['accC_1'], self.test['c_1']  = self.find_min_ed()
                 #print(self.find_hausdorff())
                 x = True
             if (datetime.now() - dt) >= timedelta(seconds=3) and not y:
-                self.test['accuracy_2'], self.test['ed_2'], self.test['accuracyH_2'], self.test['h_2'] = self.find_min_ed()
+                self.test['acc_2'], self.test['ed_2'], self.test['acc_2'], self.test['h_2'], self.test['accC_2'], self.test['c_2']  = self.find_min_ed()
                 y = True
             if (datetime.now() - dt) >= timedelta(seconds=5) and not z:
-                self.test['accuracy_3'], self.test['ed_3'], self.test['accuracyH_3'], self.test['h_3'] = self.find_min_ed()
+                self.test['acc_3'], self.test['ed_3'], self.test['accH_3'], self.test['h_3'], self.test['accC_3'], self.test['c_3'] = self.find_min_ed()
                 z = True
                 #print ("Rec", self.reconstr_data)
                 #print ("Real", self.monitor_data[0])
