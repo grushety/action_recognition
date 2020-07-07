@@ -25,7 +25,8 @@ missing_mod = [-2, -2, -2, -2]
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 rp = rospkg.RosPack()
 PATH = os.path.join(rp.get_path("action_recognition"), "scripts", "learning")
-
+#nn = "/models/mixed_network.ckpt"
+nn = "models/reconstruction_network.ckpt"
 
 
 class Reconstructor(object):
@@ -86,7 +87,7 @@ class Reconstructor(object):
                                                vae_mode=False, vae_mode_modalities=False)
             with tf.Session() as sess:
                 new_saver = tf.train.Saver()
-                new_saver.restore(sess, PATH + "/models/mixed_network.ckpt")
+                new_saver.restore(sess, PATH + nn)
                 print("Model restored.")
 
                 old_time = datetime.now()
@@ -105,11 +106,12 @@ class Reconstructor(object):
                         # handle time issue for next loop
                         old_joint = joint
                         old_time = datetime.now()
-                        self.coords.append(rec_coord)
+                        if self.status=="start":
+                            self.coords.append(rec_coord)
                         # prepare reconstructed_trajectory array and publish it
                         #msg_rec = prepare_data_to_send(rec_coord, self.reconstructed_trajectory)
 
-                        self.pub_rec.publish(str(self.coords))
+                            self.pub_rec.publish(str(self.coords))
 
 
 def main(args):

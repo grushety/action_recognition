@@ -17,7 +17,7 @@ MILS = 125
 
 global image_source
 image_source = "/iris/camera/image_raw/compressed"
-
+#image_source = "/pepper_robot/camera/bottom/image_raw/compressed"
 
 class Tracker(object):
     """
@@ -63,6 +63,7 @@ class Tracker(object):
                 x = int(M["m10"] / M["m00"])
                 y = int(M["m01"] / M["m00"])
                 self.coordinate = [640 - x, y]  # mirror the coordinates
+                #self.coordinate = [x, y]
 
     def track(self):
         """

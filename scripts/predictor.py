@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 import tensorflow as tf
+import pandas as pd
 import scipy.io
 import sys
 import os
@@ -11,19 +12,18 @@ import imutils
 
 from learning.mvae import VariationalAutoencoder
 from learning.mvae import network_param
-from service.service import denormalize_coord, prepare_data_to_send
+from service.service import denormalize_coord
 
 import rospy
 import rospkg
 import moveit_commander
 from std_msgs.msg import String
-from std_msgs.msg import Int32MultiArray
 from sensor_msgs.msg import CompressedImage
 
 RED_LOW = (0, 0, 150)
 RED_UP = (10, 10, 255)
 
-PRED_STEPS = 5
+PRED_STEPS = 3
 
 
 MILS = 10
@@ -31,7 +31,8 @@ missing_mod = [-2, -2, -2, -2]
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 rp = rospkg.RosPack()
 PATH = os.path.join(rp.get_path("action_recognition"), "scripts", "learning")
-
+#nn="/models/mixed_network.ckpt"
+nn="/models/prediction_network.ckpt"
 class Reconstructor(object):
     """
     Uses MVAE to predict the position of Robot's finger
@@ -53,6 +54,7 @@ class Reconstructor(object):
         self.coords = []
         self.camera_coords = []
         self.counter = PRED_STEPS
+        self.pred_trajectory = []
 
     def synchronize(self, msg):
         """
@@ -62,8 +64,8 @@ class Reconstructor(object):
         """
         msg = msg.data.split(' ')
         self.status = msg[0]
-        if self.status == "end":
-            self.reconstructed_trajectory = []
+        if self.status == "start":
+            self.coords = []
 
     def get_position(self, camera_data):
         """
@@ -87,7 +89,8 @@ class Reconstructor(object):
             if M["m10"] != 0 and M["m01"] != 0:
                 x = int(M["m10"] / M["m00"])
                 y = int(M["m01"] / M["m00"])
-                self.tracker_coords = [x, y]
+                self.tracker_coords = [640 - x, y]
+                #self.tracker_coords = [640 - x, y]
 
     def get_sample(self):
         """
@@ -113,7 +116,7 @@ class Reconstructor(object):
                                                vae_mode=False, vae_mode_modalities=False)
             with tf.Session() as sess:
                 new_saver = tf.train.Saver()
-                new_saver.restore(sess, PATH + "/models/prediction_network.ckpt")
+                new_saver.restore(sess, PATH + nn)
                 # new_saver.restore(sess, PATH + "/models/mixed_network.ckpt")
                 print("Models restored")
 
@@ -123,25 +126,30 @@ class Reconstructor(object):
                     if datetime.now() > old_time + timedelta(milliseconds=MILS) and self.status == "start":
                         joint = self.get_sample()
                         pos = self.tracker_coords
+                        pos_in = [float(x)/1000 for x in pos]
                         print("pos", pos)
                         # prepare the input data for MVAE prediction
                         # First option : using reconstructed visual input for t-1
                         if self.counter >= PRED_STEPS:
-                            pred_input = [joint + [-2, -2, -2] + pos + [-2, -2]]
-                            self.counter=0
+                            pred_input = [joint + [-2, -2, -2] + pos_in + [-2, -2]]
+                            #pred_input = [joint + [-2, -2, -2, -2, -2, -2, -2]
+                            self.counter = 0
                         else:
-                            pred_input = [joint + [-2, -2, -2] + old_pos + [-2, -2]]
-                            self.counter+=1
+                            pred_input = [joint + [-2, -2, -2] + old_in + [-2, -2]]
+                            # pred_input = [joint + [-2, -2, -2, -2, -2, -2, -2]
+                            self.counter += 1
                         predict, _ = model.reconstruct(sess, pred_input)
                         old_pos = predict[0][8:]
-                        print("old_pos", old_pos)
-                        pred_coord = denormalize_coord(old_pos)
+                        old_in = old_pos.tolist()
+                        pred_coord = denormalize_coord(old_pos).tolist()
+
+                        print("old_pos", pred_coord)
 
                         # handle time issue for next loop
                         old_joint = joint
                         old_time = datetime.now()
 
-                        # publish predicted direction to Comparator node
+                        # publish prediction to Comparator node
                         self.coords.append(pred_coord)
                         self.pub_pred.publish(str(self.coords))
 

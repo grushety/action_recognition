@@ -1,50 +1,92 @@
 #!/usr/bin/env python
 import sys
 import ast
+import uuid
+import cv2
 import random
 import numpy as np
 from scipy import spatial
 from datetime import datetime, timedelta
-
+import pandas as pd
 from scipy.spatial.distance import directed_hausdorff
-
+from scipy.spatial.distance import cosine
 import rospy
 from std_msgs.msg import String
 from std_msgs.msg import Int32MultiArray
+path = '/action_recognition/pos_reconstruction'
+#path = '/action_recognition/pos_prediction'
+
+TEST_SIZE = 100
 
 def resize(a, x):
     if x != 0:
         for i in range(x):
-            index = random.randint(1, a.size/2 - 2)
+            index = random.randint(1, a.size / 2 - 2)
             a = np.insert(a, index, a[index], axis=0)
     return a
 
 
-def adjust(a, b):
-    print("before", a.shape, b.shape)
-    if a.shape[0] < b.shape[1]:
-        a = resize(a, b.shape[1] - a.shape[0])
-        return norm(a), norm_matrix(b)
-    else:
-        c = np.zeros(3, a.shape[0], a.shape[1])
-        for i in range (b.shape[0]):
-            c[i] = resize(b[i], a.shape[1]-b.shape[0])
-        return norm(a), norm(c)
+def adjust(arr, matrix):
+    arr_len, mat_len = arr.shape[0], matrix.shape[1]
+    diff = abs(arr_len - mat_len)
+    if arr_len < mat_len:
+        arr = resize(arr, diff)
+    elif arr_len > mat_len:
+        c = np.zeros((3, arr_len, 2))
+        for i in range(matrix.shape[0]):
+            c[i] = resize(matrix[i], arr.shape[0] - matrix.shape[1])
+        matrix = c
+    return arr, matrix
 
 def norm(a):
-    mean_x = int(np.mean(a[:,0]))
-    mean_y = int(np.mean(a[:,1]))
-    a[...,0] -= mean_x
-    a[...,1] -= mean_y
+    mean_x = int(np.mean(a[:, 0]))
+    mean_y = int(np.mean(a[:, 1]))
+    a[..., 0] -= mean_x
+    a[..., 1] -= mean_y
     return a
+
 
 def norm_matrix(b):
     for i in range(b.shape[0]):
-        b[i]=norm(b[i])
+        b[i] = norm(b[i])
     return b
+
 
 def distance(v1, v2):
     return np.sqrt(np.sum((v1 - v2) ** 2))
+
+
+def newTest(TEST_SIZE):
+    a = {
+            "name": np.empty(TEST_SIZE,  dtype='<U10'),
+            "start_time": np.empty(TEST_SIZE,  dtype='<U25'),
+            "2_ed_pred": np.zeros(TEST_SIZE, bool),
+            "4_ed_pred": np.zeros(TEST_SIZE, bool),
+            "6_ed_pred": np.zeros(TEST_SIZE, bool),
+            "2_ed_m": np.empty(TEST_SIZE, dtype='<U50'),
+            "4_ed_m": np.empty(TEST_SIZE, dtype='<U50'),
+            "6_ed_m": np.empty(TEST_SIZE, dtype='<U50'),
+            "2_h_pred": np.zeros(TEST_SIZE, bool),
+            "4_h_pred": np.zeros(TEST_SIZE, bool),
+            "6_h_pred": np.zeros(TEST_SIZE, bool),
+            "2_h_m": np.empty(TEST_SIZE, dtype='<U50'),
+            "4_h_m": np.empty(TEST_SIZE, dtype='<U50'),
+            "6_h_m": np.empty(TEST_SIZE, dtype='<U50'),
+            "2_c_pred": np.zeros(TEST_SIZE, bool),
+            "4_c_pred": np.zeros(TEST_SIZE, bool),
+            "6_c_pred": np.zeros(TEST_SIZE, bool),
+            "2_c_m": np.empty(TEST_SIZE, dtype='<U50'),
+            "4_c_m": np.empty(TEST_SIZE, dtype='<U50'),
+            "6_c_m": np.empty(TEST_SIZE, dtype='<U50'),
+            "2_cos_pred": np.zeros(TEST_SIZE, bool),
+            "4_cos_pred": np.zeros(TEST_SIZE, bool),
+            "6_cos_pred": np.zeros(TEST_SIZE, bool),
+            "2_cos_m": np.empty(TEST_SIZE, dtype='<U50'),
+            "4_cos_m": np.empty(TEST_SIZE, dtype='<U50'),
+            "6_cos_m": np.empty(TEST_SIZE, dtype='<U50'),
+        }
+    return a
+
 
 class Comparator(object):
     """
@@ -53,29 +95,20 @@ class Comparator(object):
     """
 
     def __init__(self):
-        self.sub_rec = rospy.Subscriber('/action_recognition/pos_reconstruction',
-                                        String, self.receive_rec_data,
-                                        queue_size=1)
-        self.sub_pred = rospy.Subscriber('/action_recognition/pos_prediction',
-                                         Int32MultiArray, self.receive_data, queue_size=1)
+        self.sub_rec = rospy.Subscriber(path, String, self.receive_rec_data, queue_size=1)
         self.sub_monitor = rospy.Subscriber('/action_recognition/monitor/data',
                                             Int32MultiArray, self.receive_monitor_data,
                                             queue_size=1)
-        #self.pub = rospy.Publisher('/action_recognition/results', String, queue_size=10)
+        # self.pub = rospy.Publisher('/action_recognition/results', String, queue_size=10)
         self.status_subscriber = rospy.Subscriber("/action_recognition/test_status",
                                                   String, self.synchronize, queue_size=20)
         self.monitor_data = np.array([])
         self.reconstr_data = np.array([])
         self.mode = 0
         self.status = ""
-        self.tests = []
-        self.test = {
-            "name": " ", "start_time": " ",
-            "accuracy_1": " ","accuracy_2": " ", "accuracy_3": " ",
-            "ed_1": " ", "ed_2": " ", "ed_3": " ",
-        }
-        self.rec_counter, self.monitor_counter, self.test_counter= 0, 0, 0
-        #results = [0,0,0]
+        self.name = ""
+        self.test = newTest(TEST_SIZE)
+        self.rec_counter, self.monitor_counter, self.test_counter = 0, 0, 0
 
     def synchronize(self, msg):
         """
@@ -86,16 +119,25 @@ class Comparator(object):
         msg = msg.data.split(' ')
         self.status = msg[0]
         if self.status == "prepare":
-            self.test['name'] = msg[1]
+            self.name = msg[1]
+            self.test['name'][self.test_counter] = msg[1]
+            print("start of ", self.name)
         if self.status == "start":
             time = msg[2] + ' ' + msg[3]
             date_time_obj = datetime.strptime(time, '%Y-%m-%d %H:%M:%S.%f')
-            self.test['start_time'] = date_time_obj.strftime("%H:%M:%S")
+            self.test['start_time'][self.test_counter] = date_time_obj.strftime("%H:%M:%S")
             self.timer(date_time_obj)
         if self.status == "end":
-            self.tests.append(self.test)
+            print("end of test N", self.test_counter)
+            image = np.ones([480, 640, 3], dtype=np.uint8) * 255
+            if self.monitor_data.size > 4:
+                cv2.polylines(image, [self.monitor_data[0]], False, (255, 0, 0), 2, lineType=4)
+                cv2.polylines(image, [self.monitor_data[1]], False, (0, 255, 0), 2, lineType=4)
+                cv2.polylines(image, [self.monitor_data[2]], False, (0, 0, 255), 2, lineType=4)
+            if self.reconstr_data.size > 4:
+                cv2.polylines(image, [self.reconstr_data], False, (0, 0, 0), 2, lineType=6)
+            cv2.imwrite("Documents/imgs/"+self.name+".png", image)
             self.test_counter += 1
-            self.test = {}
             self.rec_counter = 0
             self.monitor_counter = 0
 
@@ -120,34 +162,34 @@ class Comparator(object):
         self.reconstr_data = np.asarray(points, dtype=int)
         self.rec_counter += 1
 
-    def receive_data(self, data):
-        """
-        Callback
-        @param data: 2D-array of points
-        """
-        pass
-        #l = data.layout.dim[0].size
-        #input_reconstructor = np.asarray(data.data)
-        #self.reconstr_data = input_reconstructor.reshape(l, 2)
-        #self.rec_counter += 1
+    def get_path_dist(self):
+        if self.test_counter < TEST_SIZE:
+            index = 3
+            index_1, index_2, index_3, index_4= 3, 3, 3, 3
+            ed, hausdorffs, cdist, cos = np.zeros(3), np.zeros(3), np.zeros(3), np.zeros(3),
+            if not self.reconstr_data.size == 0:
+                a, b = adjust(self.reconstr_data, self.monitor_data)
+                Aflat = np.hstack(a)
+                for i in range(b.shape[0]):
+                    ed[i] = distance(a, b[i])
+                    cdist[i] = np.trace(spatial.distance.cdist(a, b[i]))
+                    hausdorffs[i] = directed_hausdorff(a, b[i])[0]
+                    Bflat = np.hstack(b[i])
+                    cos[i] = cosine(Aflat, Bflat)
+                ed = np.round(ed, 2)
+                hausdorffs = np.round(hausdorffs, 2)
+                cdist = np.round(cdist, 2)
+                index_1 = np.argmin(ed)
+                index_2 = np.argmin(hausdorffs)
+                index_3 = np.argmin(cdist)
+                index_4 = np.argmax(cos)
+                ed = ", ".join(str(x) for x in ed)
+                hausdorffs = ", ".join(str(x) for x in hausdorffs)
+                cdist = ", ".join(str(x) for x in cdist)
+                cos = ", ".join(str(x) for x in cos)
 
-
-    def find_min_ed(self):
-        index = 3
-        results, hausdorffs, cdist = np.zeros(3), np.zeros(3), np.zeros(3)
-        if not self.reconstr_data.size == 0:
-            a, b = adjust(self.reconstr_data, self.monitor_data)
-            for i in range(b.shape[0]):
-                results[i] = distance(a, b[i])
-                cdist[i] = np.trace(spatial.distance.cdist(a, b[i]))
-                hausdorffs[i] = directed_hausdorff(a, b[i])[0]
-                print "results:", cdist
-                print "mean:", np.min(cdist)
-            index_1 = np.argmin(results)
-            index_2 = np.argmin(hausdorffs)
-            index_3 = np.argmin(cdist)
-        return index_1 == 0, results, index_2 == 0, hausdorffs, index_3==0, cdist
-
+            return index_1 == 0, ed, index_2 == 0, hausdorffs, index_3 == 0, cdist, index_4==0, cos
+        return 0, 0, 0, 0, 0, 0
 
     def timer(self, dt):
         """
@@ -157,30 +199,31 @@ class Comparator(object):
         x, y, z = False, False, False
         while not x or not y or not z:
             if (datetime.now() - dt) >= timedelta(seconds=2) and not x:
-                self.test['acc_1'], self.test['ed_1'], self.test['acc_1'], self.test['h_1'], self.test['accC_1'], self.test['c_1']  = self.find_min_ed()
-                #print(self.find_hausdorff())
+                self.test["2_ed_pred"][self.test_counter], self.test["2_ed_m"][self.test_counter], self.test["2_h_pred"][self.test_counter], self.test["2_h_m"][self.test_counter], self.test["2_c_pred"][self.test_counter], self.test["2_c_m"][self.test_counter], self.test["2_cos_pred"][self.test_counter], self.test["2_cos_m"][self.test_counter]  = self.get_path_dist()
                 x = True
-            if (datetime.now() - dt) >= timedelta(seconds=3) and not y:
-                self.test['acc_2'], self.test['ed_2'], self.test['acc_2'], self.test['h_2'], self.test['accC_2'], self.test['c_2']  = self.find_min_ed()
+            if (datetime.now() - dt) >= timedelta(seconds=4) and not y:
+                self.test["4_ed_pred"][self.test_counter], self.test["4_ed_m"][self.test_counter], self.test["4_h_pred"][self.test_counter], self.test["4_h_m"][self.test_counter], self.test["4_c_pred"][self.test_counter], self.test["4_c_m"][self.test_counter], self.test["4_cos_pred"][self.test_counter], self.test["4_cos_m"][self.test_counter] = self.get_path_dist()
                 y = True
-            if (datetime.now() - dt) >= timedelta(seconds=5) and not z:
-                self.test['acc_3'], self.test['ed_3'], self.test['accH_3'], self.test['h_3'], self.test['accC_3'], self.test['c_3'] = self.find_min_ed()
+            if (datetime.now() - dt) >= timedelta(seconds=6) and not z:
+                self.test["6_ed_pred"][self.test_counter], self.test["6_ed_m"][self.test_counter], \
+                self.test["6_h_pred"][self.test_counter], self.test["6_h_m"][self.test_counter], self.test["6_c_pred"][
+                    self.test_counter], self.test["6_c_m"][self.test_counter], self.test["2_cos_pred"][self.test_counter],self.test["2_cos_m"][self.test_counter] = self.get_path_dist()
                 z = True
-                #print ("Rec", self.reconstr_data)
-                #print ("Real", self.monitor_data[0])
-
 
 
 def main(args):
+    import uuid
+    uid = uuid.uuid4().hex
     ic = Comparator()
     rospy.init_node('comparator', anonymous=True)
     rospy.sleep(10)
     if args != "":
         Comparator.mode = args
     try:
-        while ic.test_counter < 3:
-            rospy.spin()
-        print ("Test", ic.tests)
+        while ic.test_counter < TEST_SIZE:
+            pass
+        df = pd.DataFrame(data=ic.test, columns=['name','start_time', "2_ed_pred","2_ed_m","4_ed_pred","4_ed_m", "6_ed_pred","6_ed_m", "2_h_pred", "2_h_m", "4_h_pred","4_h_m", "6_h_pred", "6_h_m","2_c_pred", "2_c_m","4_c_pred","4_c_m", "6_c_pred","6_c_m", "2_cos_pred", "2_cos_m","4_cos_pred","4_cos_m", "6_cos_pred","6_cos_m"])
+        df.to_csv('Documents/tests/test_' + uid + '.csv', sep=',')
     except KeyboardInterrupt:
         print ("Shutting down ROS comparator module")
 

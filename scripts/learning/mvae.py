@@ -10,7 +10,7 @@ os.environ['TF_CPP_MIN_LOG_LEVEL']='2'
 PATH = "/home/yulia/pepper_ws/src/action_recognition/scripts/learning"
 
 # load data set
-data = scipy.io.loadmat(PATH + "/database/augm_rec_pred_data.mat")
+data = scipy.io.loadmat(PATH + "/database/augm_for_reconstr_data.mat")
 X_init = 1 * data["data"]
 print(X_init.shape)
 n_samples = X_init.shape[0]
@@ -267,7 +267,7 @@ def train(sess, vae, input_data, learning_rate=0.0001, batch_size=100, training_
             print("Epoch: %04d / %04d, Cost= %04f, Recon= %04f, Latent= %04f, alpha= %04f" % \
                   (epoch, training_epochs, avg_cost, avg_recon, avg_latent, alpha))
 
-    save_path = vae.saver.save(vae.sess, PATH + "/models/test_network.ckpt")
+    save_path = vae.saver.save(vae.sess, PATH + "/models/reconstruction_network.ckpt")
 
 
 def shuffle_data(x):
@@ -333,4 +333,4 @@ if __name__ == '__main__':
     vae = VariationalAutoencoder(sess, network_param(), learning_rate=learning_rate, batch_size=batch_size,
                                  vae_mode=vae_mode, vae_mode_modalities=vae_mode_modalities)
     vae.print_layers_size()
-    train(sess, vae, X_init, training_epochs=1000, batch_size=batch_size)
+    train(sess, vae, X_init, training_epochs=80000, batch_size=batch_size)
