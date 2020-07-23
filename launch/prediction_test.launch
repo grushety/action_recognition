@@ -1,8 +1,8 @@
 <launch>
      <node pkg="action_recognition" name="motor" type="motor.py" />
      <node pkg="action_recognition" name="test_controller" type="test_controller.py"/>
-     <node pkg="action_recognition" name="reconstructor" type="reconstructor.py" output="screen"/>
+     <node pkg="action_recognition" name="predictor" type="predictor.py" output="screen"/>
      <node pkg="action_recognition" name="tracker" type="tracker.py" />
      <node pkg="action_recognition" name="monitor" type="monitor.py" />
-     <node pkg="action_recognition" name="comparator" type="comparator.py" output="screen"/>
+     <node pkg="action_recognition" name="comparator" type="comparator.py" output="screen" args="1"/>
 </launch>

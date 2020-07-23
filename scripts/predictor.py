@@ -157,25 +157,20 @@ def main(args):
     """
     @param args: MVAE model used in reconstruction or prediction
     """
-    default = "/models/last_mixed_network.ckpt"
+    model_name = "/models/last_mixed_network.ckpt"
+    steps = 3
+    mode = 0
     if len(args) > 1:
         if args[1] == '1':
             mode = 1
-            model_name = default
-        elif args[1] == '0':
-            mode = 0
-            model_name = default
-        else:
-            model_name = "/models/" + args[1] + ".ckpt"
-    else:
-        model_name = default
-        mode = 0
-        steps = 3
     if len(args) > 2:
+        if args[2]!= '0':
+            model_name = "/models/" + args[2] + ".ckpt"
+    if len(args) > 3:
         try:
-            steps = int(args[2])
+            steps = int(args[3])
         except:
-            print ("Number of prediction step (arg 2) should be int")
+            print ("Number of prediction step (arg 3) should be int")
 
     rospy.init_node('predictor', anonymous=True)
     ic = Reconstructor(model_name, mode, steps)
