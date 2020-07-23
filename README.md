@@ -6,7 +6,7 @@
 3. TensorFlow 1.3.0
 4. Gazebo 7
 5. ROS Kinetic
-6. Pepper Package from https://github.com/michtesar/pepper_ros
+6. Pepper Package
 ```
 git clone https://github.com/michtesar/pepper_ros.git
 cd ..
@@ -14,7 +14,7 @@ rosdep check -y --from-paths . --ignore-src --rosdistro kinetic
 rosdep install -y --from-paths . --ignore-src --rosdistro kinetic
 catkin_make
 ```
-7. Moveit should be built from source to use moveit-commander in nodes.
+7. Moveit should be built from source to use moveit-commander in nodes
 ```
 sudo apt install ros-kinetic-moveit-ros-visualization ros-kinetic-moveit-planners-ompl 
 git clone https://github.com/ros-planning/moveit.git -b kinetic-devel
@@ -44,7 +44,7 @@ go to *pepper_ros/pepper_meshes/meshes/1.0/LFinger13.dae* and *LFinger12.dae* an
 - color sid="diffuse" from 1 1 1 1 to **1 0 0 1**
 #### Run experiment
 
-First,  launch Gazebo and after that, start MoveIt using commands below. Make sure that simulation in Gazebo is running, before starting MoveIt.
+First, run Gazebo and after that, start MoveIt using commands below. Make sure that simulation in Gazebo is running, before starting MoveIt.
 
 ```
 roslaunch pepper_gazebo_plugin pepper_gazebo_plugin_Y20.launch
