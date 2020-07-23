@@ -18,8 +18,8 @@ from std_msgs.msg import Int32MultiArray
 rp = rospkg.RosPack()
 uid = uuid.uuid4().hex
 
-test_name = "pred_3_prednet_bot_c"
-outputName = test_name + uid +".csv"
+test_set_name = "test_set_rec_"
+outputName = test_set_name + uid +".csv"
 CSV_PATH = os.path.join(rp.get_path("action_recognition"), "scripts", "test_results", outputName)
 
 def resize(a, x):
@@ -155,7 +155,7 @@ class Comparator(object):
                 cv2.polylines(image, [self.monitor_data[2]], False, (0, 0, 255), 2, lineType=4)
             if self.reconstr_data.size > 4:
                 cv2.polylines(image, [self.reconstr_data], False, (0, 0, 0), 2, lineType=6)
-            imName = self.name + test_name + uid + ".png"
+            imName = self.name + test_set_name + "" + uid + ".png"
             IM_PATH = os.path.join(rp.get_path("action_recognition"), "scripts", "test_results", "imgs", imName)
             cv2.imwrite(IM_PATH, image)
             self.test_counter += 1
@@ -185,7 +185,6 @@ class Comparator(object):
 
     def get_path_dist(self):
         if self.test_counter < self.test_number:
-            print(len(self.reconstr_data), len(self.monitor_data))
             index_1, index_2, index_3, index_4 = 3, 3, 3, 3
             ed, cheb, cos = np.zeros(3), np.zeros(3), np.zeros(3)
             if not self.reconstr_data.size == 0:
@@ -237,7 +236,6 @@ class Comparator(object):
 
 
 def main(args):
-    uid = uuid.uuid4().hex
     test_number = 3
     if len(args) > 1:
         mode = args[1]

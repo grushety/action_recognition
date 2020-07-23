@@ -106,9 +106,9 @@ def main(args):
     @param args: MVAE model used in reconstruction or prediction
     """
     if len(args) > 1:
-        model_name = args[1]
+        model_name = "/models/" + args[1] + ".ckpt"
     else:
-        model_name = "/models/last_recon_network.ckpt"
+        model_name = "/models/mix_network.ckpt"
     rospy.init_node('reconstructor', anonymous=True)
     ic = Reconstructor(model_name)
     try:

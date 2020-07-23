@@ -1,8 +1,6 @@
 #!/usr/bin/env python
 
 import tensorflow as tf
-import pandas as pd
-import scipy.io
 import sys
 import os
 from datetime import datetime, timedelta
@@ -20,15 +18,15 @@ import moveit_commander
 from std_msgs.msg import String
 from sensor_msgs.msg import CompressedImage
 
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
+rp = rospkg.RosPack()
+PATH = os.path.join(rp.get_path("action_recognition"), "scripts", "learning")
+
 RED_LOW = (0, 0, 150)
 RED_UP = (10, 10, 255)
 
 MILS = 80
 missing_mod = [-2, -2, -2, -2]
-
-os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
-rp = rospkg.RosPack()
-PATH = os.path.join(rp.get_path("action_recognition"), "scripts", "learning")
 
 class Reconstructor(object):
     """
@@ -157,7 +155,7 @@ def main(args):
     """
     @param args: MVAE model used in reconstruction or prediction
     """
-    model_name = "/models/last_mixed_network.ckpt"
+    model_name = "/models/mixed_network.ckpt"
     steps = 3
     mode = 0
     if len(args) > 1:

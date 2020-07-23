@@ -1,0 +1,83 @@
+<?xml version="1.0"?>
+<sdf version="1.4">
+  <model name="Pepper Camera">
+	<static>true</static>
+    <link name="cube_body">
+
+	      <inertial>
+        <mass>1.0</mass>
+        <inertia> <!-- inertias are tricky to compute -->
+          <!-- http://gazebosim.org/tutorials?tut=inertia&cat=build_robot -->
+          <ixx>0.083</ixx>       <!-- for a box: ixx = 0.083 * mass * (y*y + z*z) -->
+          <ixy>0.0</ixy>         <!-- for a box: ixy = 0 -->
+          <ixz>0.0</ixz>         <!-- for a box: ixz = 0 -->
+          <iyy>0.083</iyy>       <!-- for a box: iyy = 0.083 * mass * (x*x + z*z) -->
+          <iyz>0.0</iyz>         <!-- for a box: iyz = 0 -->
+          <izz>0.083</izz>       <!-- for a box: izz = 0.083 * mass * (x*x + y*y) -->
+        </inertia>
+      </inertial>
+      <collision name="collision">
+        <geometry>
+          <box>
+            <size>0.2 0.2 2</size>
+          </box>
+        </geometry>
+      </collision>
+      <visual name="visual">
+        <geometry>
+          <box>
+            <size>0.2 0.2 2</size>
+          </box>
+        </geometry>
+      </visual>
+    </link>
+<link name='cam_link'>
+  <pose frame=''>-0.118317 0.002195 0.95 -0 -0 -3.12703</pose>
+  <inertial>
+    <mass>0.1</mass>
+    <inertia>
+      <ixx>1</ixx>
+      <ixy>0</ixy>
+      <ixz>0</ixz>
+      <iyy>1</iyy>
+      <iyz>0</iyz>
+      <izz>1</izz>
+    </inertia>
+    <pose frame=''>0 0 0 0 -0 0</pose>
+  </inertial>
+  <self_collide>0</self_collide>
+  <kinematic>0</kinematic>
+  <sensor name='camera1' type='camera'>
+    <camera name="head">
+      <horizontal_fov>1.3962634</horizontal_fov>
+      <image>
+        <width>700</width>
+        <height>700</height>
+        <format>R8G8B8</format>
+      </image>
+      <clip>
+        <near>0.02</near>
+        <far>300</far>
+      </clip>
+    </camera>
+    <always_on>1</always_on>
+    <update_rate>30</update_rate>
+    <visualize>1</visualize>
+    <plugin name="camera_controller" filename="libgazebo_ros_camera.so">
+    <alwaysOn>true</alwaysOn>
+    <updateRate>0.0</updateRate>
+    <cameraName>iris/camera</cameraName>
+    <imageTopicName>image_raw</imageTopicName>
+    <cameraInfoTopicName>camera_info</cameraInfoTopicName>
+    <frameName>camera_link</frameName>
+    <hackBaseline>0.07</hackBaseline>
+    <distortionK1>0.0</distortionK1>
+    <distortionK2>0.0</distortionK2>
+    <distortionK3>0.0</distortionK3>
+    <distortionT1>0.0</distortionT1>
+    <distortionT2>0.0</distortionT2>
+  </plugin>
+  </sensor>
+</link>
+  </model>
+</sdf>
