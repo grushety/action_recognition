@@ -3,9 +3,7 @@
 import tensorflow as tf
 import sys
 import os
-import random
 from datetime import datetime, timedelta
-import numpy as np
 
 from learning.mvae import VariationalAutoencoder
 from learning.mvae import network_param
@@ -15,7 +13,6 @@ import rospy
 import rospkg
 import moveit_commander
 from std_msgs.msg import String
-from std_msgs.msg import Int32MultiArray
 
 RED_LOW = (0, 0, 150)
 RED_UP = (10, 10, 255)
@@ -25,9 +22,6 @@ missing_mod = [-2, -2, -2, -2]
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 rp = rospkg.RosPack()
 PATH = os.path.join(rp.get_path("action_recognition"), "scripts", "learning")
-#nn = "/models/mixed_network.ckpt"
-nn = "models/reconstruction_network.ckpt"
-
 
 class Reconstructor(object):
     """
@@ -36,7 +30,7 @@ class Reconstructor(object):
     Publishes the results for Comparator node.
     """
 
-    def __init__(self):
+    def __init__(self, model_name):
         moveit_commander.roscpp_initialize(sys.argv)
         self.robot = moveit_commander.RobotCommander()
         self.scene = moveit_commander.PlanningSceneInterface()
@@ -46,6 +40,7 @@ class Reconstructor(object):
                                                   String, self.synchronize, queue_size=20)
         self.status = ""
         self.coords = []
+        self.model_name = model_name
 
     def synchronize(self, msg):
         """
@@ -60,19 +55,14 @@ class Reconstructor(object):
 
     def get_sample(self):
         """
-        @return: current joints data formatted for MVAE input
+        @return: current joints extra_data formatted for MVAE input
         """
         sample = self.group.get_current_joint_values()
         return [sample[0], sample[1], sample[3]]
 
-
-
-
-
-
     def run(self):
         """
-        The method with a certain frequency (defined by MILS var) requests joints configuration data
+        The method with a certain frequency (defined by MILS var) requests joints configuration extra_data
         and uses it as input in loaded network to make a reconstruction/prediction of visual output.
         """
         with tf.Graph().as_default() as g:
@@ -87,7 +77,7 @@ class Reconstructor(object):
                                                vae_mode=False, vae_mode_modalities=False)
             with tf.Session() as sess:
                 new_saver = tf.train.Saver()
-                new_saver.restore(sess, PATH + nn)
+                new_saver.restore(sess, PATH + self.model_name)
                 print("Model restored.")
 
                 old_time = datetime.now()
@@ -96,21 +86,18 @@ class Reconstructor(object):
                     if datetime.now() > old_time + timedelta(milliseconds=MILS) and self.status == "start":
                         joint = self.get_sample()
 
-                        # prepare the input data for MVAE reconstruction
+                        # prepare the input extra_data for MVAE reconstruction
                         rec_input = [old_joint + joint + missing_mod]
 
-                        # pass the data through nn and denormalize output coordinates
+                        # pass the extra_data through model_name and denormalize output coordinates
                         reconstruct, _ = model.reconstruct(sess, rec_input)
 
                         rec_coord = denormalize_coord(reconstruct[0][8:]).tolist()
                         # handle time issue for next loop
                         old_joint = joint
                         old_time = datetime.now()
-                        if self.status=="start":
+                        if self.status == "start":
                             self.coords.append(rec_coord)
-                        # prepare reconstructed_trajectory array and publish it
-                        #msg_rec = prepare_data_to_send(rec_coord, self.reconstructed_trajectory)
-
                             self.pub_rec.publish(str(self.coords))
 
 
@@ -118,8 +105,12 @@ def main(args):
     """
     @param args: MVAE model used in reconstruction or prediction
     """
+    if len(args) > 1:
+        model_name = args[1]
+    else:
+        model_name = "/models/last_recon_network.ckpt"
     rospy.init_node('reconstructor', anonymous=True)
-    ic = Reconstructor()
+    ic = Reconstructor(model_name)
     try:
         ic.run()
     except KeyboardInterrupt:

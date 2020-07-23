@@ -15,15 +15,12 @@ RED_UP = (10, 10, 255)
 # time difference with witch samples would be made (100 mils only 3-4 samples per second)
 MILS = 125
 
-global image_source
-image_source = "/iris/camera/image_raw/compressed"
-#image_source = "/pepper_robot/camera/bottom/image_raw/compressed"
 
 class Tracker(object):
     """
-    Tracker node traces movements of Robot's finger and publish the data for Monitor node
+    Tracker node traces movements of Robot's finger and publish the extra_data for Monitor node
     """
-    def __init__(self):
+    def __init__(self, image_source):
         self.camera_subscriber = rospy.Subscriber(image_source,
                                                   CompressedImage, self.get_arm_position, queue_size=20)
         self.status_subscriber = rospy.Subscriber("/action_recognition/test_status",
@@ -31,6 +28,8 @@ class Tracker(object):
         self.pub = rospy.Publisher('/action_recognition/pos_from_side_camera', String, queue_size=10)
         self.coordinate = [0, 0]
         self.status = ""
+        self.image_source = image_source
+        print image_source
 
     def synchronize(self, msg):
         """
@@ -62,8 +61,10 @@ class Tracker(object):
             if M["m10"] != 0 and M["m01"] != 0:
                 x = int(M["m10"] / M["m00"])
                 y = int(M["m01"] / M["m00"])
-                self.coordinate = [640 - x, y]  # mirror the coordinates
-                #self.coordinate = [x, y]
+                if self.image_source == '/iris/camera/image_raw/compressed':
+                    self.coordinate = [640 - x, y]  # mirror the coordinates
+                else:
+                    self.coordinate = [x, y]
 
     def track(self):
         """
@@ -87,10 +88,10 @@ def main(args):
     @param args: if mode set on 1, tracker will use bottom camera from Pepper's head instead of opposite camera
     """
     if len(args) > 1:
-        if args[1] == "1":
-            global image_source
-            image_source = "/pepper_robot/camera/bottom/image_raw/compressed"
-    ic = Tracker()
+        image_source = "/pepper_robot/camera/bottom/image_raw/compressed"
+    else:
+        image_source = "/iris/camera/image_raw/compressed"
+    ic = Tracker(image_source)
     rospy.init_node('tracker', anonymous=True)
     try:
         ic.track()

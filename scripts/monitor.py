@@ -22,7 +22,7 @@ RED_LOW = (0, 0, 150)
 RED_UP = (10, 10, 255)
 
 rp = rospkg.RosPack()
-PATH = os.path.join(rp.get_path("action_recognition"), "scripts", "data", "line.mat")
+PATH = os.path.join(rp.get_path("action_recognition"), "scripts", "extra_data", "line.mat")
 database = sio.loadmat(PATH)
 db = database['data'].tolist()
 
@@ -30,8 +30,8 @@ db = database['data'].tolist()
 class Monitor(object):
     """
     Monitor becomes the current trajectory of Robot's arm from Tracker node and
-    noises it with other trajectories, pre-generated and recorded in /data/lines.
-    Monitor node sends the data to Comparator node and visualizes the data
+    noises it with other trajectories, pre-generated and recorded in /extra_data/lines.
+    Monitor node sends the data to Comparator node and visualizes the extra_data
     """
     def __init__(self):
         self.publisher = rospy.Publisher("/action_recognition/monitor/data",
@@ -123,7 +123,7 @@ def main(args):
                         cv2.polylines(image, np.int32([data]), False, color, 3)
                     else:
                         cv2.circle(image, tuple(data[-1]), 15, color, 10)
-            #cv2.imshow('monitor', image)
+            cv2.imshow('monitor', image)
             cv2.waitKey(2)
         rospy.spin()
     except KeyboardInterrupt:

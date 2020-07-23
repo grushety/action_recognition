@@ -23,16 +23,13 @@ from sensor_msgs.msg import CompressedImage
 RED_LOW = (0, 0, 150)
 RED_UP = (10, 10, 255)
 
-PRED_STEPS = 3
-
-
-MILS = 10
+MILS = 80
 missing_mod = [-2, -2, -2, -2]
+
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 rp = rospkg.RosPack()
 PATH = os.path.join(rp.get_path("action_recognition"), "scripts", "learning")
-#nn="/models/mixed_network.ckpt"
-nn="/models/prediction_network.ckpt"
+
 class Reconstructor(object):
     """
     Uses MVAE to predict the position of Robot's finger
@@ -40,7 +37,7 @@ class Reconstructor(object):
     Publishes the results for Comparator node.
     """
 
-    def __init__(self):
+    def __init__(self, model_name, mode, steps):
         moveit_commander.roscpp_initialize(sys.argv)
         self.robot = moveit_commander.RobotCommander()
         self.scene = moveit_commander.PlanningSceneInterface()
@@ -53,8 +50,11 @@ class Reconstructor(object):
         self.status = ""
         self.coords = []
         self.camera_coords = []
-        self.counter = PRED_STEPS
+        self.steps = steps
+        self.counter = self.steps
         self.pred_trajectory = []
+        self.model_name = model_name
+        self.mode = mode
 
     def synchronize(self, msg):
         """
@@ -89,8 +89,10 @@ class Reconstructor(object):
             if M["m10"] != 0 and M["m01"] != 0:
                 x = int(M["m10"] / M["m00"])
                 y = int(M["m01"] / M["m00"])
-                self.tracker_coords = [640 - x, y]
-                #self.tracker_coords = [640 - x, y]
+                if self.mode == 1:
+                    self.tracker_coords = [x, y]
+                else:
+                    self.tracker_coords = [640 - x, y]
 
     def get_sample(self):
         """
@@ -116,8 +118,7 @@ class Reconstructor(object):
                                                vae_mode=False, vae_mode_modalities=False)
             with tf.Session() as sess:
                 new_saver = tf.train.Saver()
-                new_saver.restore(sess, PATH + nn)
-                # new_saver.restore(sess, PATH + "/models/mixed_network.ckpt")
+                new_saver.restore(sess, PATH + self.model_name)
                 print("Models restored")
 
                 old_time = datetime.now()
@@ -127,40 +128,57 @@ class Reconstructor(object):
                         joint = self.get_sample()
                         pos = self.tracker_coords
                         pos_in = [float(x)/1000 for x in pos]
-                        print("pos", pos)
                         # prepare the input data for MVAE prediction
                         # First option : using reconstructed visual input for t-1
-                        if self.counter >= PRED_STEPS:
+                        if self.counter >= self.steps:
                             pred_input = [joint + [-2, -2, -2] + pos_in + [-2, -2]]
-                            #pred_input = [joint + [-2, -2, -2, -2, -2, -2, -2]
                             self.counter = 0
                         else:
                             pred_input = [joint + [-2, -2, -2] + old_in + [-2, -2]]
                             # pred_input = [joint + [-2, -2, -2, -2, -2, -2, -2]
                             self.counter += 1
                         predict, _ = model.reconstruct(sess, pred_input)
+                        predict, _ = model.reconstruct(sess, predict)
                         old_pos = predict[0][8:]
                         old_in = old_pos.tolist()
                         pred_coord = denormalize_coord(old_pos).tolist()
-
-                        print("old_pos", pred_coord)
 
                         # handle time issue for next loop
                         old_joint = joint
                         old_time = datetime.now()
 
                         # publish prediction to Comparator node
-                        self.coords.append(pred_coord)
-                        self.pub_pred.publish(str(self.coords))
-
+                        if self.status == "start":
+                            self.coords.append(pred_coord)
+                            self.pub_pred.publish(str(self.coords))
 
 
 def main(args):
     """
     @param args: MVAE model used in reconstruction or prediction
     """
+    default = "/models/last_mixed_network.ckpt"
+    if len(args) > 1:
+        if args[1] == '1':
+            mode = 1
+            model_name = default
+        elif args[1] == '0':
+            mode = 0
+            model_name = default
+        else:
+            model_name = "/models/" + args[1] + ".ckpt"
+    else:
+        model_name = default
+        mode = 0
+        steps = 3
+    if len(args) > 2:
+        try:
+            steps = int(args[2])
+        except:
+            print ("Number of prediction step (arg 2) should be int")
+
     rospy.init_node('predictor', anonymous=True)
-    ic = Reconstructor()
+    ic = Reconstructor(model_name, mode, steps)
     try:
         ic.run()
     except KeyboardInterrupt:

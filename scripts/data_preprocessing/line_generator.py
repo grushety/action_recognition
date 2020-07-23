@@ -28,7 +28,7 @@ class LineGenerator:
         self.number_of_samples = 1000
         self.experiment_time = 7
         rp = rospkg.RosPack()
-        self.path = os.path.join(rp.get_path("action_recognition"), "scripts", "data")
+        self.path = os.path.join(rp.get_path("action_recognition"), "scripts", "extra_data")
         #temp = np.load(self.path + '/lines.txt.npy')
         #print temp.tolist()
 
@@ -66,7 +66,7 @@ class LineGenerator:
             lines.append(line)
             counter+=1
             print counter
-        sio.savemat(self.path + '/line.mat', {'data': lines})
+        sio.savemat(self.path + '/line.mat', {'extra_data': lines})
 
 
 def main(args):

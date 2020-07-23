@@ -3,12 +3,12 @@ import random
 import numpy as np
 from sklearn.preprocessing import StandardScaler
 
-# restore data
+# restore extra_data
 PATH = "/home/yulia/pepper_ws/src/action_recognition/scripts/learning/database/"
 data = scipy.io.loadmat(PATH + "original_normalized_data.mat")
-x = 1*data['data']
+x = 1*data['extra_data']
 
-# normalize data
+# normalize extra_data
 copy1 = np.array([])
 for line in x:
     y = np.append(line, line)
@@ -47,5 +47,5 @@ out = out.reshape(15000, 20)
 
 #x = np.append(x,copy, axis=0)'''
 
-scipy.io.savemat(PATH + 'augm_rec_pred_data.mat', {'data': out})
+scipy.io.savemat(PATH + 'augm_rec_pred_data.mat', {'extra_data': out})
 

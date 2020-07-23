@@ -10,12 +10,10 @@ os.environ['TF_CPP_MIN_LOG_LEVEL']='2'
 PATH = "/home/yulia/pepper_ws/src/action_recognition/scripts/learning"
 
 # load data set
-data = scipy.io.loadmat(PATH + "/database/augm_for_reconstr_data.mat")
+data = scipy.io.loadmat(PATH + "/database/my_big_mix_data.mat")
 X_init = 1 * data["data"]
 print(X_init.shape)
 n_samples = X_init.shape[0]
-
-
 
 class VariationalAutoencoder(object):
     """ Variation Autoencoder (VAE) with an sklearn-like interface implemented using TensorFlow.
@@ -170,7 +168,7 @@ class VariationalAutoencoder(object):
                 reconstr_loss = (0.5 * tf.reduce_sum( #quadrat of dif btw orig and gen data
                     tf.square(self.x_noiseless_sliced[i] - self.layers['final_means'][i]) / tf.exp(
                         self.layers['final_sigmas'][i]), 1)   # e^x could be only positive
-                                 + 0.5 * abs(tf.reduce_sum(self.layers['final_sigmas'][i], 1)) # only thing can be negative
+                                 + 0.5 * tf.reduce_sum(self.layers['final_sigmas'][i], 1) # only thing can be negative
                                  + 0.5 * self.n_z / 2 * np.log(2 * math.pi)) / self.network_architecture['size_slices'][
                                     i]
                 self.tmp_costs.append(reconstr_loss)
@@ -251,9 +249,9 @@ def train(sess, vae, input_data, learning_rate=0.0001, batch_size=100, training_
             batch_xs_augmented = X_shuffled[batch_size * i:batch_size * i + batch_size]
 
             batch_xs = np.asarray(
-                [item[10:] for item in batch_xs_augmented])  # np.asarray([item[:18]   for item in batch_xs_augmented])
+                [item[:10] for item in batch_xs_augmented])  # np.asarray([item[16:]   for item in batch_xs_augmented])
             batch_xs_noiseless = np.asarray(
-                [item[:10] for item in batch_xs_augmented])  # np.asarray([item[:18]   for item in batch_xs_augmented])
+                [item[10:] for item in batch_xs_augmented])  # np.asarray([item[:16]   for item in batch_xs_augmented])
             # batch_xs_noiseless_J   = np.asarray([item[8:12]   for item in batch_xs_noiseless])
 
             # Fit training using batch data
@@ -267,7 +265,7 @@ def train(sess, vae, input_data, learning_rate=0.0001, batch_size=100, training_
             print("Epoch: %04d / %04d, Cost= %04f, Recon= %04f, Latent= %04f, alpha= %04f" % \
                   (epoch, training_epochs, avg_cost, avg_recon, avg_latent, alpha))
 
-    save_path = vae.saver.save(vae.sess, PATH + "/models/reconstruction_network.ckpt")
+    save_path = vae.saver.save(vae.sess, PATH + "/models/last_mix_network.ckpt")
 
 
 def shuffle_data(x):
@@ -285,8 +283,8 @@ def network_param():
     @return: Architecture for 2 modalities MVAE
     """
     network_architecture = {
-         'n_input': 10,
-         'n_z': 10, # output size
+         'n_input': 10,  # 10
+         'n_z': 10,  # output size 10
          'size_slices': [6, 4],
          'size_slices_shared': [15, 10],
          'mod0': [30, 15],
@@ -316,7 +314,7 @@ def xavier_init(fan_in, fan_out, constant=1):
 
 
 if __name__ == '__main__':
-    learning_rate = 0.00005
+    learning_rate = 0.00001 # 0.00005
     batch_size = 1000
 
     # Train Network
@@ -333,4 +331,4 @@ if __name__ == '__main__':
     vae = VariationalAutoencoder(sess, network_param(), learning_rate=learning_rate, batch_size=batch_size,
                                  vae_mode=vae_mode, vae_mode_modalities=vae_mode_modalities)
     vae.print_layers_size()
-    train(sess, vae, X_init, training_epochs=80000, batch_size=batch_size)
+    train(sess, vae, X_init, training_epochs=30000, batch_size=batch_size)
