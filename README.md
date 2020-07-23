@@ -58,7 +58,7 @@ or
 ```
 roslaunch action_recognition prediction_test.launch
 ```
-Шt is possible to change the experiment settings by following the instructions in the launch files.
+It is possible to change the experiment settings by following the instructions in the launch files.
 
 ### Run MVAE test results
 
