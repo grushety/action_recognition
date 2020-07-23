@@ -18,7 +18,7 @@ this part is still not ready ...
 
 1. Please copy test.world file from the action_recognition/gazebo
 to pepper-ros/pepper_gazebo_plugin/worlds folder and correct the world name in
-pepper_gazebo_plagin_Y20.launch
+pepper_gazebo_plugin_Y20.launch
 2. please copy folder "pepper_camera" to local folder .gazebo/models
 
 #### Run experiment

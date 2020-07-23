@@ -2,14 +2,18 @@ import numpy as np
 import tensorflow as tf
 import scipy.io
 import math
+import sys
 import os
 
+#last results
 os.environ['TF_CPP_MIN_LOG_LEVEL']='2'
 
-data = scipy.io.loadmat("./database/mix_data.mat")
+# load data set
+data = scipy.io.loadmat("./database/z_mis_time_data.mat")
 X_init = 1 * data["data"]
 print(X_init.shape)
 n_samples = X_init.shape[0]
+
 
 class VariationalAutoencoder(object):
     """ Variation Autoencoder (VAE) with an sklearn-like interface implemented using TensorFlow.
@@ -30,7 +34,7 @@ class VariationalAutoencoder(object):
         self.batch_size = batch_size
         #vae_mode the way to define self.z
         self.vae_mode = vae_mode
-
+        #
         self.vae_mode_modalities = vae_mode_modalities
         #self.n_mc = 4
         #self.n_vis = 4
@@ -245,9 +249,9 @@ def train(sess, vae, input_data, learning_rate=0.0001, batch_size=100, training_
             batch_xs_augmented = X_shuffled[batch_size * i:batch_size * i + batch_size]
 
             batch_xs = np.asarray(
-                [item[:10] for item in batch_xs_augmented])  # np.asarray([item[16:]   for item in batch_xs_augmented])
+                [item[:16] for item in batch_xs_augmented])  # np.asarray([item[16:]   for item in batch_xs_augmented])
             batch_xs_noiseless = np.asarray(
-                [item[10:] for item in batch_xs_augmented])  # np.asarray([item[:16]   for item in batch_xs_augmented])
+                [item[16:] for item in batch_xs_augmented])  # np.asarray([item[:16]   for item in batch_xs_augmented])
             # batch_xs_noiseless_J   = np.asarray([item[8:12]   for item in batch_xs_noiseless])
 
             # Fit training using batch data
@@ -261,7 +265,7 @@ def train(sess, vae, input_data, learning_rate=0.0001, batch_size=100, training_
             print("Epoch: %04d / %04d, Cost= %04f, Recon= %04f, Latent= %04f, alpha= %04f" % \
                   (epoch, training_epochs, avg_cost, avg_recon, avg_latent, alpha))
 
-    save_path = vae.saver.save(vae.sess, "./models/my_network.ckpt")
+    save_path = vae.saver.save(vae.sess, "./models/z_pred_network.ckpt")
 
 
 def shuffle_data(x):
@@ -279,9 +283,9 @@ def network_param():
     @return: Architecture for 2 modalities MVAE
     """
     network_architecture = {
-         'n_input': 10,  # 10
-         'n_z': 10,  # output size 10
-         'size_slices': [6, 4],
+         'n_input': 16, #10
+         'n_z': 16, # output size 10
+         'size_slices': [8, 8], # [6,4]
          'size_slices_shared': [15, 10],
          'mod0': [30, 15],
          'mod1': [20, 10],
@@ -310,7 +314,7 @@ def xavier_init(fan_in, fan_out, constant=1):
 
 
 if __name__ == '__main__':
-    learning_rate = 0.00001 # 0.00005
+    learning_rate = 0.00005
     batch_size = 1000
 
     # Train Network
@@ -327,4 +331,4 @@ if __name__ == '__main__':
     vae = VariationalAutoencoder(sess, network_param(), learning_rate=learning_rate, batch_size=batch_size,
                                  vae_mode=vae_mode, vae_mode_modalities=vae_mode_modalities)
     vae.print_layers_size()
-    train(sess, vae, X_init, training_epochs=100, batch_size=batch_size)
+    train(sess, vae, X_init, training_epochs=30000, batch_size=batch_size)
