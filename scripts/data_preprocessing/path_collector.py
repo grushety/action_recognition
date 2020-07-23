@@ -1,5 +1,9 @@
 #!/usr/bin/env python
 
+# Run script to collect trajectories of Pepper's arm movement from Gazebo simulation
+
+# Collected data will be used in Monitor to noise online collected trajectory
+
 import sys
 import os
 import numpy as np
@@ -18,7 +22,7 @@ RED_UP = (10, 10, 255)
 MILS = 100 #only 3-4 samples per second
 
 
-class LineGenerator:
+class PathCollector:
     def __init__(self):
         self.image_pub = rospy.Subscriber("/iris/camera/image_raw/compressed",
                                           CompressedImage,
@@ -66,14 +70,14 @@ class LineGenerator:
             lines.append(line)
             counter+=1
             print counter
-        sio.savemat(self.path + '/line.mat', {'extra_data': lines})
+        sio.savemat(self.path + '/line.mat', {'data': lines})
 
 
 def main(args):
     # Initializes and cleanup ros node
-    ic = LineGenerator()
+    ic = PathCollector()
     #ic.number_of_samples = args
-    rospy.init_node('line_generator', anonymous=True)
+    rospy.init_node('path_collector', anonymous=True)
     ic.collector()
 
 if __name__ == '__main__':

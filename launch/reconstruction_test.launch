@@ -1,0 +1,15 @@
+<launch>
+     <node pkg="action_recognition" name="motor" type="motor.py" />
+     <node pkg="action_recognition" name="test_controller" type="test_controller.py"/>
+     <node pkg="action_recognition" name="reconstructor" type="predictor.py" output="screen" args = "rec_network"/>
+     <!-- to change a network for reconstructor node set it argument in arg
+     as f.e args = "mix_network" -->
+     <node pkg="action_recognition" name="tracker" type="tracker.py" />
+    <!-- without arguments tracker node use as input source the opposite camera.
+    to use Pepper bottom camera set the arg to 1
+    as f.e :  args = "1" -->
+     <node pkg="action_recognition" name="monitor" type="monitor.py" />
+     <node pkg="action_recognition" name="comparator" type="comparator.py" output="screen" args="0 3"/>
+    <!-- set needed number of test as second argument for comparator node
+     as f.e for 100 tests:  args = "0 100" -->
+</launch>

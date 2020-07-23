@@ -12,14 +12,16 @@ import rospy
 import rospkg
 import moveit_commander
 from sensor_msgs.msg import CompressedImage
-import moveit_msgs.msg
 
 RED_LOW = (0, 0, 150)
 RED_UP = (10, 10, 255)
-MILS = 500 #only 3-4 samples per second
+MILS = 500  #only 3-4 samples per second
 
 
-class DataCollector:
+class DataCollector(object):
+    """
+        Collects dataset form Gazebo simulation with Pepper robot.
+    """
     def __init__(self):
         self.image_pub = rospy.Subscriber("/pepper_robot/camera/bottom/image_raw/compressed",
                                           CompressedImage,
@@ -52,7 +54,6 @@ class DataCollector:
             self.coordinate = (x, y)
         else:
             self.coordinate = (0, 0)
-        print self.coordinate
 
     def make_new_sample(self):
         current_joints = self.group.get_current_joint_values()
@@ -77,7 +78,7 @@ class DataCollector:
                     old_sample = new_sample
                     old_time = datetime.now() + timedelta(milliseconds=MILS)
                     counter += 1
-                    print counter
+                    print(counter)
             old_joints = cur_joints
         samples = np.asarray(samples, dtype=np.float32)
         samples = np.reshape(samples, (-1, 10))

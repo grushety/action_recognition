@@ -123,7 +123,7 @@ def main(args):
                         cv2.polylines(image, np.int32([data]), False, color, 3)
                     else:
                         cv2.circle(image, tuple(data[-1]), 15, color, 10)
-            cv2.imshow('monitor', image)
+            # cv2.imshow('monitor', image)
             cv2.waitKey(2)
         rospy.spin()
     except KeyboardInterrupt:

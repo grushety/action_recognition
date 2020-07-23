@@ -13,4 +13,13 @@ Moveit from source to use moveit-commander in scripts
 git clone https://github.com/ros-planning/moveit.git -b kinetic-devel
 ```
 
-
+#### Run experiment
+Run launch file to start experiment
+```
+roslaunch action_recognition reconstruction_test.launch
+```
+or 
+```
+roslaunch action_recognition prediction_test.launch
+```
+To change the experiment setting see comments in launch files
