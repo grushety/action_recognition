@@ -1,5 +1,5 @@
 # Project for Bachelor Thesis
-##### "Vorhersage und Erkennung von Handlungskonsequenzen in Robotern"
+##### "Prediction and recognition of action consequences in robotics"
 #### Environment Requiremens
 1. Ubuntu 16.04
 2. Python 2.7
